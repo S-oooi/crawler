@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
 import time
 import pickle
 import os
@@ -62,11 +63,46 @@ def login_xiaohongshu():
     except Exception as e:
         print(f"登录出错: {e}")
         raise
+def search_and_get_profile(blogger_name):
+    """搜索博主并提取主页简介"""
+    try:
+        # 找到搜索框并输入博主名称
+        search_box = WebDriverWait(wd, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'search-input'))
+        )
+        search_box.clear()
+        search_box.send_keys(blogger_name)
+        search_box.send_keys(Keys.RETURN)  # 使用回车键触发搜索
+        print(f"已搜索博主: {blogger_name}")
+
+        # 等待搜索结果加载，找到博主头像并点击
+        avatar = WebDriverWait(wd, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'user-item')]//img"))  # 搜索结果中的头像
+        )
+        avatar.click()
+        print("已进入博主主页")
+
+        # 等待主页加载，提取简介
+        profile_intro = WebDriverWait(wd, 10).until(
+           EC.presence_of_element_located((By.XPATH, "//div[@class='user-desc']"))
+                )
+        print(profile_intro.text)
+        intro_text = profile_intro.text
+        print(f"博主简介: {intro_text}")
+        return intro_text
+
+    except Exception as e:
+        print(f"搜索或提取简介出错: {e}")
+        return None
+
 def main():
     try:
         login_xiaohongshu()
-        
+        # 示例：搜索某个博主并提取简介
+        blogger_name = "AI车库中的老李"  # 替换为你想搜索的博主名称
+        search_and_get_profile(blogger_name)
     finally:
         wd.quit()
+
 if __name__ == "__main__":
     main()

@@ -74,6 +74,9 @@ def search_and_get_profile(blogger_name):
         search_box.send_keys(blogger_name)
         search_box.send_keys(Keys.RETURN)  # 使用回车键触发搜索
         print(f"已搜索博主: {blogger_name}")
+       
+        # 记录当前窗口句柄
+        original_window = wd.current_window_handle
 
         # 等待搜索结果加载，找到博主头像并点击
         avatar = WebDriverWait(wd, 10).until(
@@ -82,9 +85,20 @@ def search_and_get_profile(blogger_name):
         avatar.click()
         print("已进入博主主页")
 
+        # 检查是否打开了新窗口，如果有则切换
+        try:
+            WebDriverWait(wd, 10).until(EC.number_of_windows_to_be(2))
+            for window_handle in wd.window_handles:
+                if window_handle != original_window:
+                    wd.switch_to.window(window_handle)
+                    print(f"已切换到新窗口: {window_handle}")
+                    break
+        except:
+            print("未检测到新窗口，仍在当前窗口操作")
+
         # 等待主页加载，提取简介
         profile_intro = WebDriverWait(wd, 10).until(
-           EC.presence_of_element_located((By.XPATH, "//div[@class='user-desc']"))
+           EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'user-desc')]"))
                 )
         print(profile_intro.text)
         intro_text = profile_intro.text
@@ -98,7 +112,7 @@ def search_and_get_profile(blogger_name):
 def main():
     try:
         login_xiaohongshu()
-        # 示例：搜索某个博主并提取简介
+        #搜索某个博主并提取简介
         blogger_name = "AI车库中的老李"  # 替换为你想搜索的博主名称
         search_and_get_profile(blogger_name)
     finally:

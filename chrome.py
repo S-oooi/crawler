@@ -109,12 +109,99 @@ def search_and_get_profile(blogger_name):
         print(f"搜索或提取简介出错: {e}")
         return None
 
+def get_notes_content(max_notes=3):
+    """提取博主主页的笔记标题和正文（适配动态弹窗并关闭）"""
+    try:
+        # 打印当前窗口句柄，确认上下文
+        print(f"当前窗口句柄: {wd.current_window_handle}")
+        print(f"窗口总数: {len(wd.window_handles)}")
+
+        # 等待笔记列表加载，使用正确的 section 标签
+        print("尝试定位笔记列表...")
+        notes = WebDriverWait(wd, 15).until(
+            EC.presence_of_all_elements_located(
+                (By.XPATH, "//section[contains(@class, 'note-item')]")
+            )
+        )
+        print(f"找到 {len(notes)} 篇笔记，将提取前 {max_notes} 篇")
+
+        # 存储所有笔记内容
+        notes_content = []
+        
+        for i, note in enumerate(notes[:max_notes], 1):
+            try:
+                # 找到可点击的封面链接
+                cover_link = note.find_element(By.XPATH, ".//a[contains(@class, 'cover')]")
+                cover_link.click()
+                print(f"正在打开第 {i} 篇笔记")
+
+                # 等待弹窗中的标题加载
+                note_title = WebDriverWait(wd, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//div[@id='detail-title' and contains(@class, 'title')]")
+                    )
+                )
+                
+                # 等待弹窗中的正文加载
+                note_body = WebDriverWait(wd, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//div[@id='detail-desc' and contains(@class, 'desc')]//span[contains(@class, 'note-text')]")
+                    )
+                )
+
+                title_text = note_title.text.strip()
+                body_text = note_body.text.strip()
+                
+                notes_content.append({
+                    'note_number': i,
+                    'title': title_text,
+                    'body': body_text
+                })
+                print(f"第 {i} 篇笔记标题: {title_text}")
+                print(f"第 {i} 篇笔记正文预览: {body_text[:100]}...")
+
+                # 关闭弹窗
+                try:
+                    close_button = WebDriverWait(wd, 5).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, "//div[contains(@class, 'close') and contains(@class, 'close-mask-dark')]")
+                        )
+                    )
+                    close_button.click()
+                    print(f"已关闭第 {i} 篇笔记弹窗")
+                except Exception as e:
+                    print(f"关闭弹窗失败: {e}，尝试继续下一条")
+
+                # 等待页面恢复
+                time.sleep(2)
+
+            except Exception as e:
+                print(f"提取第 {i} 篇笔记出错: {e}")
+                continue
+
+        return notes_content
+
+    except Exception as e:
+        print(f"获取笔记列表出错: {e}")
+        print("当前页面部分源代码:")
+        print(wd.page_source[:500])  # 打印前500字符
+        return []
 def main():
     try:
         login_xiaohongshu()
-        #搜索某个博主并提取简介
-        blogger_name = "AI车库中的老李"  # 替换为你想搜索的博主名称
+        blogger_name = "吃西瓜的夏天"
         search_and_get_profile(blogger_name)
+        
+        # 获取笔记内容
+        notes = get_notes_content(max_notes=3)
+        
+        # 分类打印笔记内容
+        print("\n=== 提取的笔记内容 ===")
+        for note in notes:
+            print(f"\n笔记 {note['note_number']}:")
+            print(f"标题: {note['title']}")
+            print(f"正文: {note['body']}")
+            
     finally:
         wd.quit()
 
